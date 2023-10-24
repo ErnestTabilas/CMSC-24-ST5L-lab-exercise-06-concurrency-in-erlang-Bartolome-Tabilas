@@ -15,15 +15,20 @@ connected() ->
 start_chat() ->
     Name = io:get_line('Enter Your Name: '),
     Name2 = lists:delete($\n, Name),
+    User_Nodes = nodes(),
+    [H|T] = User_Nodes,
     io:format("Hello ~s! Welcome to the chatbox! ~n", [Name2]),
-    cont_chat(Name2).
+    cont_chat(Name2,H).
 
-cont_chat(Name) ->
+cont_chat(Name,Partner_Node) ->
     Prompt = Name ++ ": ",
     Str = io:get_line(Prompt),
+    Str_send = Prompt ++ Str,
     if 
         Str == "bye\n" -> io:format("~n~nYou Disconnected...~n");
-        true -> cont_chat(Name)
+        true -> 
+            {rec2, Partner_Node} ! {Str_send, Partner_Node},
+            cont_chat(Name,Partner_Node)
     end.
 
 % NOT YET WORKING
@@ -37,12 +42,25 @@ cont_chat(Name) ->
 %             pong()
 %     end.
 
+% user1_receive() ->
+%     receive
+%         bye -> io:format("~n~nYour Partner Disconnected...~n");
+%         {Mssg, Uid1} -> 
+%             io:format(Mssg)
+%     end.
+
+user2_receive() ->
+    receive
+        bye -> io:format("~n~nYour Partner Disconnected...~n");
+        {Mssg, Uid1} -> 
+            io:format("~s",[Mssg]),
+            user2_receive()
+    end.
+
 init_chat1(Uid) ->
     net_adm:ping(Uid),
     spawn(chat, confirmConnection, [Uid]).
 
 confirmConnection(Partner_Node) -> 
-    {connected, Partner_Node} ! connect_now.
-
-
-
+    {connected, Partner_Node} ! connect_now,
+    register(rec2, spawn(chat, user2_receive, [])).
