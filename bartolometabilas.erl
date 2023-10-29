@@ -58,7 +58,8 @@
 init_chat() -> 
     io:format("Waiting for sender ~n"),
     register(rec1, spawn(bartolometabilas, receive_chat, [])),  % Spawns the chat
-    register(connected, spawn(bartolometabilas, connected, [])).
+    register(connected, spawn(bartolometabilas, connected, [])),
+    persistent_term:put(sign1, <<"open">>).     
 
 % Helper function to start the chat room
 connected() ->
@@ -69,32 +70,41 @@ connected() ->
 
 % Initial function to set the username of the current user once a connection has been established
 start_chat() ->
+    io:format("----------- C H A T R O O M ----------- ~n"),
+    [H|T] = nodes(), % Partner node
+    {connect1, H} ! connect_now, % Notifies the other node about the connection (they can now also enter their name and start the loop/enter the chat room)
     Name = io:get_line('Enter Your Name: '),
     Name2 = lists:delete($\n, Name), % Name trimmed
-    [H|T] = nodes(), % Partner node
     io:format("Hello ~s! Welcome to the chatbox! ~n", [Name2]),
-    {connect1, H} ! connect_now, % Notifies the other node about the connection (they can now also enter their name and start the loop/enter the chat room)
+    JoinPrompt = Name2 ++ " joined the chat...\n",
+    {rec2, H} ! JoinPrompt,
     cont_chat(Name2,H). % Enters the recursive loop of accepting message input/enter the chat room
 
 % Recursive function to accept message input from the current user
 cont_chat(Name,Partner_Node) ->
     Prompt = Name ++ ": ",
     Str = io:get_line(Prompt),
-    Str_send = Prompt ++ Str, % User name with message
+    S = persistent_term:get(sign1),
     if 
-        Str == "bye\n" -> % If the same user inputs 'bye'
-            % Exit routine
-            io:format("~n~nYou end the chat...~n"),
+        S == <<"close">> -> io:format("~n---------------------------------~n");
+        true ->
+            Str_send = Prompt ++ Str, % User name with message
+            if 
+                Str == "bye\n" -> % If the same user inputs 'bye'
+                    % Exit routine
+                    io:format("~n~nYou end the chat...~n---------------------------------~n"),
 
-            % Notifies the other user about the disconnection
-            {rec2, Partner_Node} ! Str_send,
-            {rec2, Partner_Node} ! bye_now,
+                    % Notifies the other user about the disconnection
+                    {rec2, Partner_Node} ! Str_send,
+                    {rec2, Partner_Node} ! bye_now,
+                    persistent_term:erase(sign1);
 
-            erlang:halt(); % Terminates the chatroom and exits erlang
-        true -> % Else
-            % Notifies the other user by sending the message
-            {rec2, Partner_Node} ! Str_send,
-            cont_chat(Name,Partner_Node)
+                    % erlang:halt(); % Terminates the chatroom and exits erlang
+                true -> % Else
+                    % Notifies the other user by sending the message
+                    {rec2, Partner_Node} ! Str_send,
+                    cont_chat(Name,Partner_Node)
+            end
     end.
 
 % Recursive function to receive message from the other user
@@ -103,7 +113,9 @@ receive_chat() ->
         bye_now -> 
             % Exit routine
             io:format("~n~nYour partner ends the chat...~n"),
-            erlang:halt(); % Terminates the chatroom and exits erlang
+            persistent_term:erase(sign1),
+            persistent_term:put(sign1, <<"close">>);
+            % erlang:halt(); % Terminates the chatroom and exits erlang
         Mssg -> 
             % Else, simply prints the message received
             io:format("~s",[Mssg]),
@@ -130,31 +142,40 @@ connect1() ->
 
 % Initial function to set the username of the current user once a connection has been established
 start_chat1() ->
+    io:format("----------- C H A T R O O M ----------- ~n"),
     Name = io:get_line('Enter Your Name: '),
     Name2 = lists:delete($\n, Name), % Name trimmed
     [H|T] = nodes(), % Partner node
     io:format("Hello ~s! Welcome to the chatbox! ~n", [Name2]),
+    JoinPrompt = Name2 ++ " joined the chat...\n",
+    {rec1, H} ! JoinPrompt,
     cont_chat1(Name2,H).  % Enters the recursive loop of accepting message input/enter the chat room
 
 % Recursive function to accept message input from the current user
 cont_chat1(Name,Partner_Node) ->
     Prompt = Name ++ ": ",
     Str = io:get_line(Prompt),
-    Str_send = Prompt ++ Str, % User name with message
+    S = persistent_term:get(sign2),
     if 
-        Str == "bye\n" ->   % If the same user inputs 'bye'
-            % Exit routine
-            io:format("~n~nYou end the chat...~n"),
+        S == <<"close">> -> io:format("~n---------------------------------~n");
+        true ->
+            Str_send = Prompt ++ Str, % User name with message
+            if 
+                Str == "bye\n" ->   % If the same user inputs 'bye'
+                    % Exit routine
+                    io:format("~n~nYou end the chat...~n---------------------------------~n"),
 
-            % Notifies the other user about the disconnection
-            {rec1, Partner_Node} ! Str_send,
-            {rec1, Partner_Node} ! bye_now,
+                    % Notifies the other user about the disconnection
+                    {rec1, Partner_Node} ! Str_send,
+                    {rec1, Partner_Node} ! bye_now,
+                    persistent_term:erase(sign2);
 
-            erlang:halt(); % Terminates the chatroom and exits erlang
-        true -> % Else
-            % Notifies the other user by sending the message
-            {rec1, Partner_Node} ! Str_send,
-            cont_chat1(Name,Partner_Node)
+                    % erlang:halt(); % Terminates the chatroom and exits erlang
+                true -> % Else
+                    % Notifies the other user by sending the message
+                    {rec1, Partner_Node} ! Str_send,
+                    cont_chat1(Name,Partner_Node)
+            end
     end.
 
 % Recursive function to receive message from the other user
@@ -163,7 +184,9 @@ receive_chat1() ->
         bye_now -> 
             % Exit routine
             io:format("~n~nYour partner ends the chat...~n"),
-            erlang:halt(); % Terminates the chatroom and exits erlang
+            persistent_term:erase(sign2),
+            persistent_term:put(sign2, <<"close">>);
+            % erlang:halt(); % Terminates the chatroom and exits erlang
         Mssg -> 
             % Else, simply prints the message received
             io:format("~s",[Mssg]),
@@ -181,7 +204,8 @@ confirmConnection(Partner_Node) ->
     {connected, Partner_Node} ! connect_now, % Notifies that a connection has been established
     % Counterpart spawnings
     register(rec2, spawn(bartolometabilas, receive_chat1, [])), 
-    register(connect1, spawn(bartolometabilas, connect1, [])).
+    register(connect1, spawn(bartolometabilas, connect1, [])),
+    persistent_term:put(sign2, <<"open">>).
 
 
 % --------------------------------------------------------------------------------------------------------------------------
