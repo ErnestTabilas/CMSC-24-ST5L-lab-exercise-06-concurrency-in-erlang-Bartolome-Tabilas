@@ -1,6 +1,6 @@
 % --------------------------------------------------------------------------------------------------------------------------
 
-% Authors: Bartolome, Vallerie
+% Authors: Bartolome, Vallerie C.
 %          Tabilas, Ernest Henley L.
 % Section: ST - 5L
 % CMSC 124 1st semester 2023-2024
@@ -99,7 +99,7 @@ cont_chat(Name,Partner_Node) ->
                     {rec2, Partner_Node} ! bye_now,
                     persistent_term:erase(sign1);
 
-                    % erlang:halt(); % Terminates the chatroom and exits erlang
+                    % erlang:halt(); % Terminates the chatroom and exits erlang (Uncomment this if you want to terminate erlang completely)
                 true -> % Else
                     % Notifies the other user by sending the message
                     {rec2, Partner_Node} ! Str_send,
@@ -115,7 +115,7 @@ receive_chat() ->
             io:format("~n~nYour partner ends the chat...~n"),
             persistent_term:erase(sign1),
             persistent_term:put(sign1, <<"close">>);
-            % erlang:halt(); % Terminates the chatroom and exits erlang
+            % erlang:halt(); % Terminates the chatroom and exits erlang (Uncomment this if you want to terminate erlang completely)
         Mssg -> 
             % Else, simply prints the message received
             io:format("~s",[Mssg]),
@@ -170,7 +170,7 @@ cont_chat1(Name,Partner_Node) ->
                     {rec1, Partner_Node} ! bye_now,
                     persistent_term:erase(sign2);
 
-                    % erlang:halt(); % Terminates the chatroom and exits erlang
+                    % erlang:halt(); % Terminates the chatroom and exits erlang (Uncomment this if you want to terminate erlang completely)
                 true -> % Else
                     % Notifies the other user by sending the message
                     {rec1, Partner_Node} ! Str_send,
@@ -186,7 +186,7 @@ receive_chat1() ->
             io:format("~n~nYour partner ends the chat...~n"),
             persistent_term:erase(sign2),
             persistent_term:put(sign2, <<"close">>);
-            % erlang:halt(); % Terminates the chatroom and exits erlang
+            % erlang:halt(); % Terminates the chatroom and exits erlang (Uncomment this if you want to terminate erlang completely)
         Mssg -> 
             % Else, simply prints the message received
             io:format("~s",[Mssg]),
